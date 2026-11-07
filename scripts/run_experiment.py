@@ -1,0 +1,94 @@
+"""Run unmodified ACE logic through a fail-closed, serial API adapter."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+import time
+from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault('TIKTOKEN_CACHE_DIR', str(ROOT / '.cache/tiktoken'))
+sys.path.insert(0, str(ROOT / 'upstream/ace-main'))
+
+class StopExperiment(BaseException):
+    """Bypass upstream broad Exception handlers on billing/transport failures."""
+
+class Meter:
+    def __init__(self, input_rate, output_rate, ceiling):
+        if input_rate <= 0 or output_rate <= 0 or not 0 < ceiling <= 100:
+            raise ValueError('Rates must be positive; ceiling must be <= CNY 100')
+        self.rates = input_rate, output_rate
+        self.ceiling = ceiling
+        self.path = ROOT / 'results/budget.jsonl'
+        self.path.parent.mkdir(exist_ok=True)
+        self.spent = sum(json.loads(s)['reserved_cny'] for s in self.path.read_text().splitlines()) if self.path.exists() else 0
+
+    def reserve(self, prompt, max_tokens):
+        # UTF-8 bytes bound byte-based token counts conservatively; include framing.
+        amount = ((len(prompt.encode('utf-8')) + 4096) * self.rates[0] + max_tokens * self.rates[1]) / 1e6
+        if self.spent + amount > self.ceiling:
+            raise StopExperiment('Budget reservation would exceed ceiling')
+        self.spent += amount
+        with self.path.open('a', encoding='utf-8') as f:
+            f.write(json.dumps({'time': time.time(), 'reserved_cny': amount, 'prompt_sha256': hashlib.sha256(prompt.encode()).hexdigest()}) + '\n')
+        # Never refund uncertain requests; conservative ledger survives interruption.
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument('--phase', choices=['pilot', 'main'], default='pilot')
+    p.add_argument('--arm', choices=['base', 'ace_r3', 'ace_r1'], required=True)
+    p.add_argument('--seed', type=int, choices=[42,43,44], default=42)
+    p.add_argument('--model', required=True)
+    p.add_argument('--input-cny-million', type=float, required=True, help='Verified cache-miss rate')
+    p.add_argument('--output-cny-million', type=float, required=True)
+    args = p.parse_args()
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / '.env')
+    if not os.getenv('DEEPSEEK_API_KEY'):
+        raise SystemExit('Set DEEPSEEK_API_KEY locally; do not paste it in logs.')
+    from openai import OpenAI
+    client = OpenAI(api_key=os.environ['DEEPSEEK_API_KEY'], base_url='https://api.deepseek.com', max_retries=0, timeout=90)
+    meter = Meter(args.input_cny_million, args.output_cny_million, 5 if args.phase == 'pilot' else 95)
+    destination = ROOT / 'results' / f'{args.phase}_{args.arm}_{args.seed}_{time.time_ns()}'
+    destination.mkdir()
+    (destination / 'settings.json').write_text(json.dumps(vars(args), indent=2))
+    def create(**kw):
+        prompt = kw['messages'][0]['content']
+        meter.reserve(prompt, kw.get('max_tokens', 2048))
+        kw['extra_body'] = {'thinking': {'type': 'disabled'}}
+        try:
+            response = client.chat.completions.create(**kw)
+        except Exception as exc:
+            raise StopExperiment(f'API stopped: {type(exc).__name__}; inspect provider balance/status before resuming') from None
+        with (destination / 'usage.jsonl').open('a', encoding='utf-8') as f:
+            f.write(json.dumps({'model': response.model, 'usage': response.usage.model_dump() if response.usage else None}) + '\n')
+        return response
+    proxy = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    import utils
+    utils.initialize_clients = lambda provider: (proxy, proxy, proxy)
+    from ace import ACE
+    from eval.finance.data_processor import DataProcessor, load_data
+    processor = DataProcessor('formula')
+    folder = ROOT / 'data' / args.phase / str(args.seed)
+    datasets = {s: processor.process_task_data(load_data(str(folder / (s+'.jsonl')))) for s in ['train','val','test']}
+    system = ACE(api_provider='deepseek', generator_model=args.model, reflector_model=args.model, curator_model=args.model, max_tokens=2048, use_bulletpoint_analyzer=False)
+    config = dict(num_epochs=1, max_num_rounds=1 if args.arm == 'ace_r1' else 3, curator_frequency=1, eval_steps=len(datasets['train']), save_steps=len(datasets['train']), playbook_token_budget=80000, task_name='formula', json_mode=False, no_ground_truth=False, save_dir=str(destination), test_workers=1, use_bulletpoint_analyzer=False, api_provider='deepseek')
+    system.run(mode='eval_only' if args.arm == 'base' else 'offline', train_samples=datasets['train'], val_samples=datasets['val'], test_samples=datasets['test'], data_processor=processor, config=config)
+
+if __name__ == '__main__':
+    # Prevent concurrent processes from racing the shared persistent ledger.
+    lock = ROOT / 'results/.run.lock'
+    lock.parent.mkdir(exist_ok=True)
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        raise SystemExit('Another run or stale lock exists; inspect before resuming.')
+    try:
+        main()
+    except StopExperiment as exc:
+        raise SystemExit(str(exc))
+    finally:
+        os.close(fd)
+        lock.unlink()
