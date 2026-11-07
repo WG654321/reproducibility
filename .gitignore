@@ -5,3 +5,5 @@ upstream/
 results/
 data/
 .cache/
+build/
+.codex-finalizer/
