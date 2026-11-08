@@ -69,7 +69,7 @@ def main():
     if not os.getenv('DEEPSEEK_API_KEY'):
         raise SystemExit('Set DEEPSEEK_API_KEY locally; do not paste it in logs.')
     from openai import OpenAI
-    client = OpenAI(api_key=os.environ['DEEPSEEK_API_KEY'], base_url='https://api.deepseek.com', max_retries=0, timeout=90)
+    client = OpenAI(api_key=os.environ['DEEPSEEK_API_KEY'], base_url='https://api.deepseek.com', max_retries=0, timeout=240)
     meter = Meter(args.input_cny_million, args.output_cny_million, 5 if args.phase == 'pilot' else 95)
     destination = ROOT / 'results' / f'{args.phase}_{args.arm}_{args.seed}_{time.time_ns()}'
     destination.mkdir()
