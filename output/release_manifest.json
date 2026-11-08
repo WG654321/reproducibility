@@ -10,7 +10,7 @@
   "scripts/run_experiment.py": "097f41eba5a1e6e31a0817dff2d022a5fab3c9167d53ed2a3acd5c896e89bd32",
   "scripts/run_suite.py": "55d8b9d14f9d0a6a1cb8f1b78dba136831199bd7133fa41e8ad5d15386df9667",
   "scripts/summarize.py": "71b47472a7540cb4db9d69b9de8a2c6c6237510e56ff2af51c5a2718bd83ab47",
-  "scripts/update_readme.py": "13367138edbaf26f08b9fff467fb29e14e301b1968f64802410077d4eafbdd70",
+  "scripts/update_readme.py": "97b845d35040015689e1ac1c666ff439279d7009f63eeb411c51390ff4df100e",
   "tests/test_budget.py": "32f938fcbcf32cfcd541bd90b5692cd4b3cdf7ec538bd72da031e02d8fba469c",
   "configs/experiment.json": "f7cbe7263ac41b4523bc73f5af743ae4ceae894b1d09362cd8eb657c83304773",
   "docs/delivery_assessment_zh.md": "479541fae75111ed604ce684868a7324bf44de6fc25deb4d4d0f973689a7bddc",
@@ -3711,7 +3711,7 @@
   "output/figures/growth.png": "7290433ab4b4d51913bd060c96ad6724e35b600025f1c6aec226276e4ce8578c",
   "output/ACE_Reproducibility_Report.pdf": "70e6e45e5d2572479173a28d014c12ab23113751bba5c732c5e9565aa1bb825e",
   "output/ACE_Presentation.pptx": "9ca235741d8e51c5e9bd09e04e368494eb4258ab2f8682357d8d7097829589a6",
-  "README.md": "72891d0a76124b29dbf4e7f30c5b9268f4e3d6adab72a6837843fda30f87038f",
+  "README.md": "602a367cce389128e982aa84ee98cc35bebcf04d7629e731691947260a6ce51d",
   "requirements-lock.txt": "717becc0bdc9716016bfb619a4734a1b02f4415f017d4ddeb3bb0d2d89dc37c4",
   ".gitignore": "68db64471ccac397cc3f0d20966343767416ad69267fc53b7368c9792a5df903"
 }
