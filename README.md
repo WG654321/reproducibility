@@ -1,48 +1,66 @@
-# ACE reproducibility: reflection budget
+# ACE Formula reproducibility
 
-Course project. Current status: implementation and three-arm API pilot completed; main repeated experiments pending.
+Nine completed main runs; three sampling seeds per configuration. Raw evidence, report and presentation accompany the release.
 
-## Scope
-Official ACE Formula task; base model versus ACE with 3 and 1 maximum reflection rounds. All arms use the same model, subsets and evaluation metric. This is a model-substituted, small-subset reproduction, not a claim to reproduce the original absolute score.
+## Results
 
-Source: https://github.com/ace-agent/ace at `82709de050e1db6e6ef2f07bcb0393560b94992a`.
-Source downloaded from GitHub codeload; the ZIP comment identifies the commit. Original code and data are under `upstream/ace-main`; retain its license when publishing.
+| Configuration | Mean accuracy | Sample SD |
+|---|---:|---:|
+| base | 70.3% | 3.21 pp |
+| ace_r3 | 78.7% | 2.89 pp |
+| ace_r1 | 79.0% | 5.00 pp |
 
-## Setup
-Windows PowerShell:
-```
+Total successful-call cost upper estimate, including pilot and interrupted attempts: CNY 24.607. This is not the provider invoice. The cumulative ledger retains uncertain-call reservations. User budget CNY 100; stop threshold 95.
+
+## Scope and limitations
+
+Official ACE source commit `82709de050e1db6e6ef2f07bcb0393560b94992a`. Formula supervised offline adaptation with DeepSeek Flash. Three-round versus one-round maximum correction depth is the only algorithmic modification. Provider integration, logging, budgeting and concurrency are engineering adaptations. Upstream algorithm Python files are unchanged.
+
+Each seed samples 50 train, 30 validation and 100 test questions. Same-seed arms share identical subsets. Seeds overlap and provider outputs vary even at temperature zero. Do not treat these as 300 independent test questions or as exact replication of the paper's model and full-data score. The control is ACE Generator with an empty playbook. See docs/protocol.md for the frozen design.
+
+## Installation and execution
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
 .\.venv\Scripts\python.exe scripts/fetch_upstream.py
 .\.venv\Scripts\python.exe scripts/prepare_data.py
 ```
 
-Optional embedding deduplication is disabled consistently across arms; no local LLM or GPU required. Do not commit keys. Use `DEEPSEEK_API_KEY` locally.
+Configure DEEPSEEK_API_KEY locally. Do not commit it. Review current model/prices before executing paid runs. No local GPU is required. Optional embedding deduplication is disabled. The exact environment lock was produced on Windows / Python 3.14.
 
-## Protocol
-Total API budget <= CNY 100. Pilot allowance CNY 5. Main sample sizes remain provisional until pilot cost is measured. Start with 5 train / 5 validation / 10 test examples. Main target 50 / 30 / 100, seeds 42,43,44. Each arm starts with an empty playbook; train updates it, validation selects it, frozen test evaluates it. Never tune against test results. Pilot test examples must be excluded from any manual error-driven prompt tuning.
-
-Track accuracy, input/output tokens, adaptation/test costs separately, duration and playbook snapshots. Record model substitution and subset differences. Exact duplicate questions are removed across splits before sampling; the manifest records exclusions and hashes. This does not guarantee absence of semantic overlap.
-
-## Debug diary
-- 2026-11-08: direct GitHub cloning stalled and directory API was rate limited. Official codeload ZIP succeeded.
-- Official Formula data are included: 500 training, 300 validation, 200 test records.
-- Native DeepSeek provider is not supported by upstream initialization; experiment wrapper will supply compatible clients.
-- Original call layer retries up to 1000 times. Paid runner must replace this with bounded/no automatic retries and a persistent cost ledger.
-- DeepSeek API connectivity verified with the user-authorized credential held only in the process environment, not project files.
-
-## Pilot results (2026-11-08)
-Seed 42, 5 training / 5 validation / 10 test questions, deepseek-flash, thinking disabled, temperature 0, max output 2048. Base: 6/10; ACE r3: 7/10 before and 7/10 after; ACE r1: 7/10 before and 6/10 after. These small samples do not establish improvement or superiority. Repeated baseline outputs varied even at temperature 0. Calls: 10 / 47 / 48 respectively. Usage-based conservative total cost: CNY 0.353464, charging all input at CNY 2/M and output at CNY 8/M. Actual invoice can be lower due to cache hits and off-peak rates. Official pricing checked at https://api-docs.deepseek.com/zh-cn/quick_start/pricing/ .
-
-Both learning arms completed generation, reflection, curation, validation selection and final frozen evaluation. Costs were nearly equal in this tiny pilot: maximum reflection rounds are an upper bound, not a guarantee of extra calls. Main study must record realized reflection counts and replicate runs before attributing differences to this parameter.
-
-Reproduce the pilot after configuring the key locally:
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -u scripts/run_suite.py
+.\.venv\Scripts\python.exe scripts/analyze.py
+.\.venv\Scripts\python.exe scripts/summarize.py
+.\.venv\Scripts\python.exe scripts/build_report.py
 ```
-.\.venv\Scripts\python.exe -X utf8 scripts/run_experiment.py --phase pilot --arm base --seed 42 --model deepseek-flash --input-cny-million 2 --output-cny-million 8
-```
-Replace `base` with `ace_r3` or `ace_r1` for the learning arms. Review current provider rates before reuse. Run `python scripts/summarize.py` for the machine-readable result summary. Logs and results remain local; no GitHub publication has occurred.
 
-## Execution status and budget controls
-`scripts/run_experiment.py` runs the official ACE classes with a DeepSeek client adapter; upstream algorithm files are unchanged. Use `--help` for options. Verified current input/cache-miss and output prices in CNY per million tokens are mandatory arguments; unknown pricing blocks execution. All runs share `results/budget.jsonl`, reserve a conservative per-request amount before sending, disable SDK retries, and stop on API errors. Pilot has a cumulative CNY 5 ceiling; main has a cumulative CNY 95 ceiling (CNY 5 headroom under the authorized total). Do not delete or reset this ledger. Only one runner can operate at once. Reservation totals overestimate actual spend; actual API usage is recorded separately.
+The suite skips completed runs. It stops on API errors; inspect rather than deleting the budget ledger. The documented seed-44 interruption was restarted only after verifying the old process had stopped. All failed-attempt logs remain. Final accuracy summaries include exactly one completed run per arm/seed.
 
-Dependency versions are in `requirements-lock.txt`. Tokenizer cache is in `.cache/tiktoken`. Budget unit test: `python -m unittest discover -s tests`. This tests persistence and refusal of an over-budget request, not provider billing correctness. Data preparation and Python compilation have passed; paid end-to-end execution remains pending.
+## Evidence and artifacts
+
+- output/analysis/analysis.json: audited metrics, paired errors and playbook trajectories
+- output/analysis/run_metrics.csv: per-run measurements
+- results/: raw responses, usage, playbooks, run settings and budget ledger
+- data/manifest.json: deterministic subset hashes
+- docs/recovery.md: interruption/recovery record
+- output/ACE_Reproducibility_Report.pdf: report
+- output/ACE_Presentation.pptx: slides with speaker notes
+- docs/presentation_guide_zh.md: recording guide
+
+Rebuilding slides uses the Codex bundled Artifact Tool and the paths in scripts/build_deck.mjs; experiment and PDF reproduction do not require that proprietary library. The released PPTX is editable.
+
+## Validation and submission
+
+Run `python -m unittest discover -s tests` for budget tests. Analysis requires all 100 test items and reconciles error indices with correct counts. Source hashing verifies no upstream algorithm edits. The eight-page PDF and ten-slide presentation were visually reviewed before release.
+
+The student must review the work, add identifying information as required, record a Zoom presentation under 15 minutes. These external submission steps are not represented as already complete. AI assistance was used in implementation, orchestration, analysis and drafting.
+
+Sources: https://arxiv.org/html/2510.04618v3 ; https://github.com/ace-agent/ace ; https://api-docs.deepseek.com/zh-cn/quick_start/pricing/
+
+## Published evidence
+
+Repository: https://github.com/WG654321/FTEC5660/tree/main/Reproducibility
+
+All raw data and results are bundled in `output/experiment_evidence.tar.gz`. Extract at this project directory with `tar -xzf output/experiment_evidence.tar.gz` before running analysis or inspecting the paths above. The archive includes completed and interrupted attempts. The full local submission ZIP additionally bundles code, report, slides and figures.

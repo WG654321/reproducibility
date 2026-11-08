@@ -8,6 +8,6 @@
   "main_sizes": {"train": 50, "val": 30, "test": 100},
   "arms": {"base": null, "ace_r3": 3, "ace_r1": 1},
   "max_tokens": 2048,
-  "workers": 1,
-  "status": "pilot pending; main sizes provisional until measured cost"
+  "workers": 4,
+  "status": "complete: nine main runs across three seeds"
 }
