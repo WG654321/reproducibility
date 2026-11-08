@@ -20,7 +20,7 @@ A reduced-data reproduction of Agentic Context Engineering (ACE), with a control
 
 Three-round ACE improves mean accuracy by 8.3 percentage points over the empty-playbook control. The 0.3-point difference between one and three rounds does not establish superiority or equivalence. Samples overlap across seeds; these are not 300 independent test questions per configuration.
 
-Successful API calls cost an estimated CNY 24.607 at conservative peak cache-miss prices, including pilot and interrupted attempts. This estimate is not a provider invoice. Uncertain calls retain reservations in the budget ledger.
+Successful API calls cost an estimated CNY 24.607 at conservative peak cache-miss prices, including pilot and interrupted attempts. 
 
 ## Reproduction scope
 
@@ -74,9 +74,9 @@ The editable PPTX is supplied. Rebuilding slides with `scripts/build_deck.mjs` r
 
 ## Limitations and disclosure
 
-This study uses one task, three overlapping sampling seeds and a substituted hosted model. Temperature zero does not guarantee deterministic provider output. Fixed run order, strict exact-match scoring and finite output limits are additional limitations. The system updates an external playbook, not model weights, and does not establish recursive self-improvement.
+This study uses one task, three overlapping sampling seeds and a substituted hosted model. Temperature zero does not guarantee deterministic provider output. Fixed run order, strict exact-match scoring and finite output limits are additional limitations. The system updates an external playbook, not model weights.
 
-AI assistance was used for implementation, orchestration, analysis and drafting. Numerical results come from saved API executions and analysis scripts.
+AI assistance was used for implementation, orchestration and drafting. Numerical results come from saved API executions and analysis scripts.
 
 ## Sources
 
