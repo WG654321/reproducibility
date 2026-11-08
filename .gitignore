@@ -8,3 +8,13 @@ data/
 build/
 .codex-finalizer/
 .chart-data-*/
+
+# Local author guidance and delivery tooling
+docs/presentation_guide_zh.md
+docs/delivery_assessment_zh.md
+scripts/finish_when_ready.py
+scripts/package_release.py
+scripts/update_readme.py
+output/ACE_Submission_Package.zip
+output/release_manifest.json
+output/report_text.txt
